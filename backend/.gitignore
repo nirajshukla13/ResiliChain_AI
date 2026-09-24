@@ -1,0 +1,22 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+*.db
+*.sqlite3
+dist/
+build/
+
+# ML outputs (binary models, generated figures/logs)
+ml/models/
+ml/artifacts/
+
+# Raw dataset downloads (23MB+, re-downloadable from UCI)
+data/
