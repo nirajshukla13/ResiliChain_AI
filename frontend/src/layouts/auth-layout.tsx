@@ -15,7 +15,7 @@ export function AuthLayout() {
     );
   }
 
-  if (user) return <Navigate to="/" replace />;
+  if (user) return <Navigate to="/dashboard" replace />;
 
   return (
     <div className="flex min-h-screen auth-gradient-bg relative overflow-hidden">

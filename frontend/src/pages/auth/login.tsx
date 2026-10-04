@@ -1,6 +1,6 @@
-import { Loader2 } from "lucide-react";
+import { Loader2, ShieldCheck, Briefcase, LineChart } from "lucide-react";
 import { useState, type FormEvent } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -13,13 +13,48 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/hooks/use-auth";
 import { ApiError } from "@/services/api";
+import type { UserRole } from "@/types";
+
+/** Landing page per role after login. */
+const ROLE_HOME: Record<UserRole, string> = {
+  admin: "/dashboard",
+  supply_chain_manager: "/inventory",
+  analyst: "/analytics",
+};
+
+const DEMO_CREDENTIALS = [
+  {
+    role: "Admin",
+    email: "admin@admin.com",
+    password: "admin123",
+    icon: ShieldCheck,
+    color: "text-red-500",
+    bg: "bg-red-500/10 hover:bg-red-500/20",
+  },
+  {
+    role: "Manager",
+    email: "manager@manager.com",
+    password: "manager123",
+    icon: Briefcase,
+    color: "text-blue-500",
+    bg: "bg-blue-500/10 hover:bg-blue-500/20",
+  },
+  {
+    role: "Analyst",
+    email: "analyst@analyst.com",
+    password: "analyst123",
+    icon: LineChart,
+    color: "text-green-500",
+    bg: "bg-green-500/10 hover:bg-green-500/20",
+  },
+];
 
 export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -28,9 +63,9 @@ export default function LoginPage() {
     event.preventDefault();
     setSubmitting(true);
     try {
-      await login(email, password);
-      const from = (location.state as { from?: string } | null)?.from ?? "/";
-      navigate(from, { replace: true });
+      const user = await login(email, password);
+      const home = ROLE_HOME[user.role] ?? "/";
+      navigate(home, { replace: true });
     } catch (error) {
       toast.error(
         error instanceof ApiError ? error.message : "Unable to sign in.",
@@ -38,6 +73,11 @@ export default function LoginPage() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const fillCredentials = (demoEmail: string, demoPassword: string) => {
+    setEmail(demoEmail);
+    setPassword(demoPassword);
   };
 
   return (
@@ -92,6 +132,35 @@ export default function LoginPage() {
             Create one
           </Link>
         </p>
+
+        {/* Demo credentials */}
+        <Separator className="my-4" />
+        <div className="space-y-2">
+          <p className="text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            Demo Credentials
+          </p>
+          <div className="grid gap-2">
+            {DEMO_CREDENTIALS.map((cred) => (
+              <button
+                key={cred.role}
+                type="button"
+                onClick={() => fillCredentials(cred.email, cred.password)}
+                className={`flex items-center gap-3 rounded-lg border p-2.5 text-left transition-colors ${cred.bg}`}
+              >
+                <cred.icon className={`h-4 w-4 shrink-0 ${cred.color}`} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold">{cred.role}</p>
+                  <p className="truncate text-[11px] text-muted-foreground">
+                    {cred.email} · {cred.password}
+                  </p>
+                </div>
+              </button>
+            ))}
+          </div>
+          <p className="text-center text-[10px] text-muted-foreground">
+            Click a role above to auto-fill credentials
+          </p>
+        </div>
       </CardContent>
     </Card>
   );

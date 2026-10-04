@@ -4,6 +4,7 @@ import { NavLink } from "react-router-dom";
 import { NAV_ITEMS } from "@/layouts/nav-items";
 import { cn } from "@/lib/utils";
 import { useAlertSummary } from "@/hooks/use-queries";
+import { useAuth } from "@/hooks/use-auth";
 
 interface SidebarNavProps {
   collapsed?: boolean;
@@ -34,13 +35,18 @@ export function SidebarNav({ collapsed = false, onNavigate }: SidebarNavProps) {
   const { data: alertSummary } = useAlertSummary();
   const unread = alertSummary?.unread ?? 0;
 
+  const { user } = useAuth();
+  const visibleItems = NAV_ITEMS.filter(
+    (item) => !item.roles || (user && item.roles.includes(user.role)),
+  );
+
   return (
     <nav className="flex-1 space-y-0.5 overflow-y-auto p-2">
-      {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
+      {visibleItems.map(({ to, label, icon: Icon }) => (
         <NavLink
           key={to}
           to={to}
-          end={to === "/"}
+          end={to === "/dashboard"}
           onClick={onNavigate}
           title={collapsed ? label : undefined}
           className={({ isActive }) =>

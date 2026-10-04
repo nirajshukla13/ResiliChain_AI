@@ -14,14 +14,14 @@ import { toast } from "sonner";
 const cleanForSpeech = (text: string): string => {
   if (!text) return "";
   let cleaned = text;
-  // Remove code blocks
-  cleaned = cleaned.replace(/```[\s\S]*?```/g, " ");
   // Remove markdown URLs but keep the link text
   cleaned = cleaned.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
-  // Remove bold/italic markers, headers, inline code
+  // Remove bold/italic markers
   cleaned = cleaned.replace(/[*_~`#]/g, "");
   // Remove HTML tags if any
   cleaned = cleaned.replace(/<[^>]*>?/gm, "");
+  // Remove code blocks
+  cleaned = cleaned.replace(/```[\s\S]*?```/g, " ");
   // Remove extra whitespace
   cleaned = cleaned.replace(/\s{2,}/g, " ").trim();
   return cleaned;
@@ -47,7 +47,7 @@ export function ChatWidget() {
   // To handle the auto-send from voice, we keep a ref to the latest transcript
   const finalTranscriptRef = useRef<string>("");
 
-  const unreadCount = isOpen ? 0 : 0; // Can be linked to state later
+  const unreadCount = isOpen ? 0 : 0;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -76,10 +76,11 @@ export function ChatWidget() {
   const stopSpeaking = useCallback(() => {
     if (synthRef.current && synthRef.current.speaking) {
       synthRef.current.cancel();
+      if (assistantState === "speaking") {
+        setAssistantState("idle");
+      }
     }
-    // We strictly use state matching to avoid unnecessary renders
-    setAssistantState((prev) => (prev === "speaking" ? "idle" : prev));
-  }, []);
+  }, [assistantState]);
 
   const speakResponse = useCallback((text: string) => {
     if (!isVoiceMode || !synthRef.current) return;
@@ -91,9 +92,9 @@ export function ChatWidget() {
 
     const utterance = new SpeechSynthesisUtterance(cleanText);
     
-    // Attempt to pick a natural English voice
+    // Optional: Select a natural English voice
     const voices = synthRef.current.getVoices();
-    const naturalVoice = voices.find(v => v.lang.startsWith("en") && (v.name.includes("Google") || v.name.includes("Natural") || v.name.includes("Online")));
+    const naturalVoice = voices.find(v => v.lang.startsWith("en") && (v.name.includes("Google") || v.name.includes("Natural")));
     if (naturalVoice) {
       utterance.voice = naturalVoice;
     }
@@ -117,11 +118,8 @@ export function ChatWidget() {
   const handleSend = async (text: string) => {
     if (!text.trim()) return;
     
-    // Interrupt any ongoing speech/listening
+    // Interrupt any ongoing speech
     stopSpeaking();
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-    }
 
     const userMsg: ChatMessageType = {
       id: crypto.randomUUID(),
@@ -153,35 +151,33 @@ export function ChatWidget() {
 
       setMessages((prev) => [...prev, assistantMsg]);
       
-      // Setup state for auto-speak
+      // Auto-speak response if not an error
       setAssistantState("idle");
-      if (isVoiceMode) {
-        speakResponse(res.answer);
-      }
+      speakResponse(res.answer);
       
     } catch (error) {
       console.error("Failed to send message:", error);
       setAssistantState("error");
       toast.error("Message failed", { description: "Could not communicate with the assistant." });
-      setTimeout(() => setAssistantState((prev) => prev === "error" ? "idle" : prev), 3000);
+      setTimeout(() => setAssistantState("idle"), 3000);
     }
   };
 
   const handleVoiceInput = () => {
-    // If speaking, clicking the mic interrupts the speech and immediately starts listening
+    // Stop speaking if currently speaking
     if (assistantState === "speaking") {
       stopSpeaking();
     }
     
     if (assistantState === "listening") {
-      // Manually stop listening. This will trigger onend, which handles auto-sending.
+      // Manually stop listening
       if (recognitionRef.current) {
         recognitionRef.current.stop();
       }
       return;
     }
 
-    // @ts-ignore - SpeechRecognition is not standard TS yet
+    // @ts-ignore
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
       toast.error("Not Supported", { description: "Your browser doesn't support voice input. Please try Chrome." });
@@ -192,7 +188,7 @@ export function ChatWidget() {
     recognitionRef.current = recognition;
     
     recognition.lang = 'en-US';
-    recognition.interimResults = true; // Enables real-time transcript visualization
+    recognition.interimResults = true; // For live transcription
     recognition.continuous = false;
 
     finalTranscriptRef.current = "";
@@ -231,17 +227,16 @@ export function ChatWidget() {
         toast.error("Microphone error", { description: event.error });
       }
       
-      setTimeout(() => setAssistantState((prev) => prev === "error" ? "idle" : prev), 2000);
+      setTimeout(() => setAssistantState("idle"), 2000);
     };
 
     recognition.onend = () => {
-      // If we finished and have text, send it automatically!
-      // (We don't check assistantState directly here to avoid stale closure issues)
-      if (finalTranscriptRef.current.trim().length > 0) {
+      // If we finished naturally and have text, send it automatically!
+      if (finalTranscriptRef.current.trim().length > 0 && assistantState === "listening") {
         handleSend(finalTranscriptRef.current);
-        finalTranscriptRef.current = ""; // Reset it so we don't double send
+      } else if (assistantState === "listening") {
+        setAssistantState("idle");
       }
-      setAssistantState((prev) => (prev === "listening" ? "idle" : prev));
     };
 
     try {
@@ -259,6 +254,10 @@ export function ChatWidget() {
     }
   };
 
+  const suggestedFollowups = messages.length > 0 && messages[messages.length - 1].role === "assistant" 
+    ? messages[messages.length - 1].suggested_followups 
+    : [];
+
   const getPlaceholderText = () => {
     switch (assistantState) {
       case "listening": return "Listening... Please speak";
@@ -268,10 +267,6 @@ export function ChatWidget() {
       default: return "Type or speak a message...";
     }
   };
-
-  const suggestedFollowups = messages.length > 0 && messages[messages.length - 1].role === "assistant" 
-    ? messages[messages.length - 1].suggested_followups 
-    : [];
 
   return (
     <div className="fixed sm:bottom-6 sm:right-6 bottom-0 right-0 z-50">
@@ -316,10 +311,7 @@ export function ChatWidget() {
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8 text-primary-foreground hover:bg-primary-foreground/20 hover:text-primary-foreground rounded-full"
-                  onClick={() => {
-                    setIsVoiceMode(!isVoiceMode);
-                    if (isVoiceMode) stopSpeaking(); // Mute immediately if toggled off
-                  }}
+                  onClick={() => setIsVoiceMode(!isVoiceMode)}
                   title={isVoiceMode ? "Voice mode enabled. Click to mute TTS." : "Voice mode disabled. Click to enable TTS."}
                 >
                   {isVoiceMode ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4 opacity-50" />}
@@ -385,7 +377,7 @@ export function ChatWidget() {
                   onKeyDown={handleKeyDown}
                   placeholder={getPlaceholderText()}
                   disabled={assistantState === "processing"}
-                  className={`pr-[80px] rounded-full border-border bg-muted/50 focus-visible:ring-primary/50 transition-all ${
+                  className={`pr-[80px] rounded-full border-border bg-muted/50 focus-visible:ring-primary/50 ${
                     assistantState === "listening" ? "ring-2 ring-red-500/50 border-red-500/50" : ""
                   }`}
                   maxLength={2000}
@@ -402,14 +394,13 @@ export function ChatWidget() {
                     onClick={handleVoiceInput}
                     title={assistantState === "speaking" ? "Interrupt assistant" : "Use voice input"}
                     type="button"
-                    disabled={assistantState === "processing"}
                   >
                     {assistantState === "speaking" ? <Volume1 className="h-4 w-4" /> : 
                      assistantState === "listening" ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
                   </Button>
                   <Button
                     size="icon"
-                    className="h-8 w-8 rounded-full transition-all"
+                    className="h-8 w-8 rounded-full"
                     onClick={() => handleSend(input)}
                     disabled={!input.trim() || assistantState === "processing"}
                     type="button"

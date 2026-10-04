@@ -40,17 +40,37 @@ class AuthService:
             expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         )
 
+    @staticmethod
+    def _role_from_email(email: str) -> UserRole:
+        """Determine role from the email domain."""
+        domain = email.rsplit("@", 1)[-1].lower()
+        domain_role_map = {
+            "admin.com": UserRole.ADMIN,
+            "manager.com": UserRole.SUPPLY_CHAIN_MANAGER,
+            "analyst.com": UserRole.ANALYST,
+        }
+        return domain_role_map.get(domain, UserRole.ANALYST)
+
     async def signup(self, data: SignupRequest) -> tuple[User, TokenPair]:
         """Register a new user.
 
-        The very first account becomes an admin (bootstrap); everyone else
-        starts as an analyst and can be promoted via the Users API.
+        Role is determined by email domain:
+        - @admin.com    → Admin
+        - @manager.com  → Supply Chain Manager
+        - @analyst.com  → Analyst
+        - other         → Analyst (default)
+
+        The very first account always becomes admin (bootstrap).
         """
         existing = await self.users.get_by_email(data.email)
         if existing is not None:
             raise ConflictError("A user with this email already exists.")
 
-        role = UserRole.ADMIN if await self.users.count() == 0 else UserRole.ANALYST
+        if await self.users.count() == 0:
+            role = UserRole.ADMIN
+        else:
+            role = self._role_from_email(data.email)
+
         user = await self.users.create(
             email=data.email.lower(),
             hashed_password=hash_password(data.password),

@@ -1,4 +1,4 @@
-import { Loader2 } from "lucide-react";
+import { Loader2, ShieldCheck, Briefcase, LineChart } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -13,8 +13,23 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/hooks/use-auth";
 import { ApiError } from "@/services/api";
+import type { UserRole } from "@/types";
+
+/** Landing page per role after signup. */
+const ROLE_HOME: Record<UserRole, string> = {
+  admin: "/dashboard",
+  supply_chain_manager: "/inventory",
+  analyst: "/analytics",
+};
+
+const DOMAIN_HINTS = [
+  { icon: ShieldCheck, color: "text-red-500", domain: "@admin.com", role: "Admin", desc: "Full access — manage users, all CRUD, forecasts & simulations" },
+  { icon: Briefcase, color: "text-blue-500", domain: "@manager.com", role: "Manager", desc: "CRUD inventory, suppliers, warehouses, reports + forecasts" },
+  { icon: LineChart, color: "text-green-500", domain: "@analyst.com", role: "Analyst", desc: "Read-only analytics, forecasts & simulations" },
+];
 
 export default function SignupPage() {
   const { signup } = useAuth();
@@ -33,9 +48,10 @@ export default function SignupPage() {
     }
     setSubmitting(true);
     try {
-      await signup(email, password, fullName);
+      const user = await signup(email, password, fullName);
       toast.success("Account created. Welcome to ResiliChain AI.");
-      navigate("/", { replace: true });
+      const home = ROLE_HOME[user.role] ?? "/";
+      navigate(home, { replace: true });
     } catch (error) {
       toast.error(
         error instanceof ApiError ? error.message : "Unable to create account.",
@@ -50,8 +66,7 @@ export default function SignupPage() {
       <CardHeader>
         <CardTitle>Create account</CardTitle>
         <CardDescription>
-          New accounts start with the Analyst role; admins can change roles
-          later.
+          Your role is assigned by email domain. See hints below.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -73,7 +88,7 @@ export default function SignupPage() {
               type="email"
               autoComplete="email"
               required
-              placeholder="you@company.com"
+              placeholder="you@admin.com"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
             />
@@ -115,6 +130,33 @@ export default function SignupPage() {
             Sign in
           </Link>
         </p>
+
+        {/* Domain-based role hints */}
+        <Separator className="my-4" />
+        <div className="space-y-2">
+          <p className="text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            Role Assignment by Domain
+          </p>
+          <div className="grid gap-2">
+            {DOMAIN_HINTS.map((hint) => (
+              <div
+                key={hint.domain}
+                className="flex items-start gap-2.5 rounded-lg border p-2.5"
+              >
+                <hint.icon className={`mt-0.5 h-4 w-4 shrink-0 ${hint.color}`} />
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold">
+                    {hint.role}{" "}
+                    <span className="font-mono font-normal text-muted-foreground">
+                      {hint.domain}
+                    </span>
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">{hint.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </CardContent>
     </Card>
   );
