@@ -454,6 +454,13 @@ export interface ChatMessageResponse {
   sources: ChatSource[];
   suggested_followups: string[];
   tool_calls_made: string[];
+  assistant_mode: "gemini" | "fallback";
+}
+
+export interface ChatbotStatus {
+  configured: boolean;
+  provider: string;
+  model: string | null;
 }
 
 export interface ConversationListItem {
@@ -463,6 +470,13 @@ export interface ConversationListItem {
   last_message_at: string;
 }
 
+export interface ConversationHistoryMessage {
+  message_id: string;
+  role: "user" | "assistant";
+  content: string;
+  created_at: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant";
@@ -470,5 +484,6 @@ export interface ChatMessage {
   sources?: ChatSource[];
   suggested_followups?: string[];
   tool_calls_made?: string[];
+  assistant_mode?: "gemini" | "fallback";
   timestamp: Date;
 }

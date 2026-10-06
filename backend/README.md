@@ -148,6 +148,20 @@ uvicorn app.main:app --reload
 
 Open **http://localhost:8000/docs**.
 
+### Configure the AI assistant
+
+The chatbot uses Google Gemini for natural-language answers and read-only
+supply-chain tools. Add a Gemini API key to `backend/.env`:
+
+```dotenv
+GEMINI_API_KEY=your-google-ai-studio-key
+GEMINI_MODEL=gemini-3.8-flash
+```
+
+The key stays on the backend and is never sent to the browser. Without a key,
+the assistant remains available in live-data-only mode for common inventory,
+alert, supplier, forecast, recommendation, simulation, and dashboard questions.
+
 > ⚠️ **The venv must be active** when you run `uvicorn`. If you see
 > `ModuleNotFoundError: No module named 'sqlalchemy'`, you're using a
 > globally-installed uvicorn with the wrong Python. Either activate the venv

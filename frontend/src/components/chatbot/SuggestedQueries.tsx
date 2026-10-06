@@ -4,15 +4,20 @@ import { Button } from "@/components/ui/button";
 interface SuggestedQueriesProps {
   queries: string[];
   onSelect: (query: string) => void;
+  title?: string;
 }
 
-export function SuggestedQueries({ queries, onSelect }: SuggestedQueriesProps) {
+export function SuggestedQueries({
+  queries,
+  onSelect,
+  title = "Suggested follow-ups",
+}: SuggestedQueriesProps) {
   if (!queries || queries.length === 0) return null;
 
   return (
     <div className="flex flex-col gap-2 p-2">
       <div className="text-xs font-medium text-muted-foreground flex items-center gap-1 ml-1">
-        <Sparkles className="h-3 w-3" /> Suggested Follow-ups
+        <Sparkles className="h-3 w-3" /> {title}
       </div>
       <div className="flex flex-wrap gap-2">
         {queries.map((query, index) => (

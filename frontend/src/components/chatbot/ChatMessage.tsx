@@ -99,10 +99,16 @@ export function ChatMessage({ message }: ChatMessageProps) {
             </button>
           )}
 
+          {message.assistant_mode === "fallback" && (
+            <Badge variant="outline" className="mb-2 text-[10px] font-normal text-amber-700 dark:text-amber-300">
+              Live data mode
+            </Badge>
+          )}
+
           {message.tool_calls_made && message.tool_calls_made.length > 0 && (
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2 pb-2 border-b border-border/50">
+            <div className="mb-2 flex items-center gap-1.5 border-b border-border/50 pb-2 text-xs text-muted-foreground">
               <Search className="h-3 w-3" />
-              <span>Querying {message.tool_calls_made.join(", ")}...</span>
+              <span>Checked {message.tool_calls_made.join(", ")}</span>
             </div>
           )}
 

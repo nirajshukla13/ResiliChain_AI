@@ -34,6 +34,8 @@ import type {
   Warehouse,
   WarehouseInput,
   ChatMessageResponse,
+  ChatbotStatus,
+  ConversationHistoryMessage,
   ConversationListItem,
 } from "@/types";
 
@@ -186,6 +188,7 @@ export const AlertApi = {
 };
 
 export const ChatbotApi = {
+  status: () => api<ChatbotStatus>("/chatbot/status"),
   sendMessage: (message: string, conversation_id?: string) =>
     api<ChatMessageResponse>("/chatbot/message", {
       method: "POST",
@@ -193,8 +196,14 @@ export const ChatbotApi = {
     }),
   conversations: () =>
     api<ConversationListItem[]>("/chatbot/conversations"),
+  getConversation: (id: string) =>
+    api<ConversationHistoryMessage[]>(
+      `/chatbot/conversations/${encodeURIComponent(id)}`,
+    ),
   deleteConversation: (id: string) =>
-    api<void>(`/chatbot/conversations/${id}`, { method: "DELETE" }),
+    api<void>(`/chatbot/conversations/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    }),
   suggestions: () =>
     api<{ suggestions: string[] }>("/chatbot/suggestions"),
 };

@@ -52,10 +52,12 @@ class Settings(BaseSettings):
     ALERT_ENGINE_ENABLED: bool = True
     ALERT_ENGINE_INTERVAL_SECONDS: int = 900
 
-    # --- AI Chatbot ---
-    OPENROUTER_API_KEY: str = ""
-    OPENROUTER_MODEL: str = "openai/gpt-4o"
+    # --- AI Chatbot (Google Gemini) ---
+    GEMINI_API_KEY: str = ""
+    GEMINI_MODEL: str = "gemini-3.8-flash"
     CHATBOT_MAX_HISTORY: int = 20
+    CHATBOT_MAX_TOOL_ROUNDS: int = 3
+    CHATBOT_TIMEOUT_SECONDS: int = 45
     CHATBOT_ENABLED: bool = True
 
     @property
