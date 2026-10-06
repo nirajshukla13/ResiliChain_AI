@@ -1,9 +1,12 @@
+import logging
 import uuid
 from datetime import date, timedelta
 from typing import Any
 
 from app.utils.pagination import PaginationParams
 from app.models.enums import AlertSeverity, EntityStatus, RiskLevel
+
+logger = logging.getLogger(__name__)
 
 TOOL_DEFINITIONS = [
     {
@@ -241,6 +244,8 @@ async def execute_tool(tool_name: str, args: dict[str, Any], services: dict[str,
         else:
             return {"error": f"Unknown tool: {tool_name}"}
             
-    except Exception as e:
-        import traceback
-        return {"error": str(e), "traceback": traceback.format_exc()}
+    except Exception:
+        # Keep internal exception details out of model context and user-visible
+        # answers; the server log retains a full diagnostic for operators.
+        logger.exception("Chatbot data tool %s failed", tool_name)
+        return {"error": "This data request could not be completed."}
